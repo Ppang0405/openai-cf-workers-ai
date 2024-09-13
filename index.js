@@ -5,7 +5,7 @@ import { chatHandler } from './routes/chat';
 import { completionHandler } from './routes/completion';
 import { embeddingsHandler } from './routes/embeddings';
 import { transcriptionHandler, translationHandler } from './routes/audio';
-import { getImageHandler, imageGenerationHandler } from './routes/image';
+import { getImageHandler, imageGenerationFromTextHandler } from './routes/image';
 import { modelsHandler } from './routes/models';
 
 const { preflight, corsify } = createCors();
@@ -44,7 +44,9 @@ router
 	.post('/embeddings', embeddingsHandler)
 	.post('/audio/transcriptions', transcriptionHandler)
 	.post('/audio/translations', translationHandler)
-	.post('/images/generations', imageGenerationHandler)
+	.post('/images/generations', imageGenerationFromTextHandler)
+	// TODO: image generator from text handler
+	// TODO: generate text from image
 	.get('/images/get/:name', getImageHandler)
 	.get('/models', modelsHandler);
 
