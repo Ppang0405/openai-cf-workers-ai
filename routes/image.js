@@ -1,33 +1,45 @@
-import { uint8ArrayToBase64 } from '../utils/converters';
-import { uuidv4 } from '../utils/uuid';
-import { streamToBuffer } from '../utils/stream';
+import { uint8ArrayToBase64 } from "../utils/converters";
+import { uuidv4 } from "../utils/uuid";
+import { streamToBuffer } from "../utils/stream";
 
 export const imageGenerationFromTextHandler = async (request, env) => {
-	let model = '@cf/stabilityai/stable-diffusion-xl-base-1.0';
-	let format = 'url';
+	let model = "@cf/stabilityai/stable-diffusion-xl-base-1.0";
+	let format = "url";
+	let prevImage = null;
 	let error = null;
 	let created = Math.floor(Date.now() / 1000);
 	try {
-		if (request.headers.get('Content-Type') === 'application/json') {
+		if (request.headers.get("Content-Type") === "application/json") {
 			let json = await request.json();
 			if (!json?.prompt) {
-				throw new Error('no prompt provided');
+				throw new Error("no prompt provided");
 			}
 			if (json?.format) {
 				format = json.format;
-				if (format !== 'b64_json' && format !== 'url') {
-					throw new Error('invalid format. must be b64_json or url');
+				if (format !== "b64_json" && format !== "url") {
+					throw new Error("invalid format. must be b64_json or url");
 				}
+			}
+			if (json?.model) {
+				model = json.model;
+			}
+			if (json?.image_b64) {
+				prevImage = json?.image_b64; // image base 64 string
 			}
 
 			const inputs = {
 				prompt: json.prompt,
+				...(prevImage
+					? {
+						image: prevImage,
+					}
+					: {}),
 			};
 
 			const respStream = await env.AI.run(model, inputs); // Get the response stream
 			const respBuffer = await streamToBuffer(respStream); // Buffer the stream into memory
 
-			if (format === 'b64_json') {
+			if (format === "b64_json") {
 				const b64_json = uint8ArrayToBase64(respBuffer);
 				return new Response(
 					JSON.stringify({
@@ -36,16 +48,16 @@ export const imageGenerationFromTextHandler = async (request, env) => {
 					}),
 					{
 						headers: {
-							'Content-Type': 'application/json',
+							"Content-Type": "application/json",
 						},
-					}
+					},
 				);
 			} else {
-				const name = uuidv4() + '.png';
+				const name = uuidv4() + ".png";
 				await env.IMAGE_BUCKET.put(name, respBuffer);
 				// the url is https:// + request url origin + /images/get/ + name
 				const urlObj = new URL(request.url);
-				const url = urlObj.origin + '/v1/images/get/' + name;
+				const url = urlObj.origin + "/v1/images/get/" + name;
 				return new Response(
 					JSON.stringify({
 						data: [{ url }],
@@ -53,9 +65,9 @@ export const imageGenerationFromTextHandler = async (request, env) => {
 					}),
 					{
 						headers: {
-							'Content-Type': 'application/json',
+							"Content-Type": "application/json",
 						},
-					}
+					},
 				);
 			}
 		}
@@ -68,16 +80,16 @@ export const imageGenerationFromTextHandler = async (request, env) => {
 		return new Response(JSON.stringify({ error: error.message }), {
 			status: 400,
 			headers: {
-				'Content-Type': 'application/json',
+				"Content-Type": "application/json",
 			},
 		});
 	}
 
 	// if we get here, return a 400 error
-	return new Response(JSON.stringify({ error: 'invalid request' }), {
+	return new Response(JSON.stringify({ error: "invalid request" }), {
 		status: 400,
 		headers: {
-			'Content-Type': 'application/json',
+			"Content-Type": "application/json",
 		},
 	});
 };
@@ -98,7 +110,7 @@ export const getImageHandler = async (request, env) => {
 	}
 	return new Response(image.body, {
 		headers: {
-			'Content-Type': 'image/png',
+			"Content-Type": "image/png",
 		},
 	});
 };
